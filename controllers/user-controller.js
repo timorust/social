@@ -153,7 +153,37 @@ const UserController = {
 		}
 	},
 	current: async (req, res) => {
-		res.send('current')
+		try {
+			const user = await prisma.user.findUnique({
+				where: {
+					id: req.user.userId,
+				},
+				include: {
+					followers: {
+						include: {
+							follower: true,
+						},
+					},
+					following: {
+						include: {
+							following: true,
+						},
+					},
+				},
+			})
+
+			if (!user) {
+				return res.status(400).json({
+					error: 'User not found',
+				})
+			}
+
+			res.json(user)
+		} catch (error) {
+			console.error(' Get Current Error', error)
+
+			res.status(500).json({ error: 'Internal server error' })
+		}
 	},
 }
 
