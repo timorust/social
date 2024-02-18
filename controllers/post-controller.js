@@ -89,7 +89,33 @@ const PostController = {
 		}
 	},
 	deletePost: async (req, res) => {
-		res.send('deletePost')
+		const { id } = req.params
+
+		const post = await prisma.post.findUnique({
+			where: { id },
+		})
+
+		if (!post) {
+			return res.status(404).json({ error: 'Post not found' })
+		}
+
+		if (post.authorId !== req.user.userId) {
+			return res.status(403).json({ error: 'No access' })
+		}
+
+		try {
+			const transaction = await prisma.$transaction([
+				prisma.comment.deleteMany({ where: { postId: id } }),
+				prisma.like.deleteMany({ where: { postId: id } }),
+				prisma.post.delete({ where: { id } }),
+			])
+
+			res.json(transaction)
+		} catch (error) {
+			console.error('Delete post failed', error)
+
+			res.status(500).json({ error: 'Internal server error' })
+		}
 	},
 }
 
