@@ -4,6 +4,7 @@ const Jdentcon = require('jdenticon')
 const path = require('path')
 const fs = require('fs')
 const jwt = require('jsonwebtoken')
+const { error } = require('console')
 require('dotenv').config()
 
 const UserController = {
@@ -107,7 +108,49 @@ const UserController = {
 		}
 	},
 	updateUser: async (req, res) => {
-		res.send('update')
+		const { id } = req.params
+		const { email, name, dateOfBirth, bio, location } = req.body
+
+		let filePath
+
+		if (req.file && req.file.path) {
+			filePath = req.file.path
+		}
+
+		if (id !== req.user.userId) {
+			return res.status(403).json({ error: 'No access' })
+		}
+
+		try {
+			if (email) {
+				const existingUser = await prisma.user.findFirst({
+					where: { email },
+				})
+
+				if (existingUser && existingUser.id !== id) {
+					return res.status(400).json({ error: ' Email already in use' })
+				}
+			}
+
+			const user = await prisma.user.update({
+				where: {
+					id,
+				},
+				data: {
+					email: email || undefined,
+					name: name || undefined,
+					avatarUrl: filePath ? `/${filePath}` : undefined,
+					dateOfBirth: dateOfBirth || undefined,
+					bio: bio || undefined,
+					location: location || undefined,
+				},
+			})
+
+			res.json(user)
+		} catch (error) {
+			console.error('Update user error', error)
+			res.status(500).json({ error: 'Internal server error' })
+		}
 	},
 	current: async (req, res) => {
 		res.send('current')
